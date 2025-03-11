@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - aristi.cloudstation
+  resources:
+  - aristis
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - aristi.cloudstation
+  resources:
+  - aristis/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - aristi.cloudstation
+  resources:
+  - aristis/status
+  verbs:
+  - get
+  - patch
+  - update

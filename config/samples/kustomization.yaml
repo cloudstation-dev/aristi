@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- aristi_v1alpha1_aristi.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,27 @@
+# permissions for end users to edit aristis.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: aristi
+    app.kubernetes.io/managed-by: kustomize
+  name: aristi-editor-role
+rules:
+- apiGroups:
+  - aristi.cloudstation
+  resources:
+  - aristis
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - aristi.cloudstation
+  resources:
+  - aristis/status
+  verbs:
+  - get

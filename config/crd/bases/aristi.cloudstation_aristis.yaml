@@ -1,0 +1,513 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: aristis.aristi.cloudstation
+spec:
+  group: aristi.cloudstation
+  names:
+    kind: Aristi
+    listKind: AristiList
+    plural: aristis
+    singular: aristi
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Aristi is the Schema for the aristis API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AristiSpec defines the desired state of Aristi
+            properties:
+              istio:
+                description: Foo is an example field of Aristi. Edit aristi_types.go
+                  to remove/update
+                properties:
+                  gateways:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                  virtualService:
+                    properties:
+                      name:
+                        type: string
+                      routes:
+                        items:
+                          properties:
+                            destination:
+                              properties:
+                                host:
+                                  type: string
+                              required:
+                              - host
+                              type: object
+                            weight:
+                              type: integer
+                          required:
+                          - destination
+                          - weight
+                          type: object
+                        type: array
+                    required:
+                    - name
+                    - routes
+                    type: object
+                required:
+                - gateways
+                - virtualService
+                type: object
+              rollout:
+                properties:
+                  replicas:
+                    format: int32
+                    type: integer
+                  selector:
+                    description: |-
+                      Label selector for pods. Existing ReplicaSets whose pods are
+                      selected by this will be the ones affected by this rollout.
+                      It must match the pod template's labels.
+                    properties:
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector
+                          requirements. The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector
+                                applies to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  strategy:
+                    description: RolloutStrategy defines strategy to apply during
+                      next rollout
+                    properties:
+                      canary:
+                        description: CanaryStrategy defines parameters for a Replica
+                          Based Canary
+                        properties:
+                          canaryService:
+                            description: CanaryService holds the name of a service
+                              which selects pods with canary version and don't select
+                              any pods with stable version.
+                            type: string
+                          stableService:
+                            description: StableService holds the name of a service
+                              which selects pods with stable version and don't select
+                              any pods with canary version.
+                            type: string
+                          steps:
+                            description: Steps define the order of phases to execute
+                              the canary deployment
+                            items:
+                              properties:
+                                pause:
+                                  description: |-
+                                    Pause freezes the rollout by setting spec.Paused to true.
+                                    A Rollout will resume when spec.Paused is reset to false.
+                                  properties:
+                                    duration:
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      description: Duration the amount of time to
+                                        wait before moving to the next step.
+                                      x-kubernetes-int-or-string: true
+                                  type: object
+                                setWeight:
+                                  description: SetWeight sets what percentage of the
+                                    newRS should receive
+                                  format: int32
+                                  type: integer
+                              type: object
+                            type: array
+                          trafficRouting:
+                            description: TrafficRouting hosts all the supported service
+                              meshes supported to enable more fine-grained traffic
+                              routing
+                            properties:
+                              istio:
+                                description: Istio holds Istio specific configuration
+                                  to route traffic
+                                properties:
+                                  destinationRule:
+                                    description: DestinationRule references an Istio
+                                      DestinationRule to modify to shape traffic
+                                    properties:
+                                      canarySubsetName:
+                                        description: CanarySubsetName is the subset
+                                          name to modify labels with canary ReplicaSet
+                                          pod template hash value
+                                        type: string
+                                      name:
+                                        description: Name holds the name of the DestinationRule
+                                        type: string
+                                      stableSubsetName:
+                                        description: StableSubsetName is the subset
+                                          name to modify labels with stable ReplicaSet
+                                          pod template hash value
+                                        type: string
+                                    required:
+                                    - canarySubsetName
+                                    - name
+                                    - stableSubsetName
+                                    type: object
+                                  virtualService:
+                                    description: VirtualService references an Istio
+                                      VirtualService to modify to shape traffic
+                                    properties:
+                                      name:
+                                        description: Name holds the name of the VirtualService
+                                        type: string
+                                      routes:
+                                        description: A list of HTTP routes within
+                                          VirtualService to edit. If omitted, VirtualService
+                                          must have a single route of this type.
+                                        items:
+                                          type: string
+                                        type: array
+                                      tcpRoutes:
+                                        description: A list of TCP routes within VirtualService
+                                          to edit. If omitted, VirtualService must
+                                          have a single route of this type.
+                                        items:
+                                          description: TCPRoute holds the information
+                                            on the virtual service's TCP routes that
+                                            are desired to be matched for changing
+                                            weights.
+                                          properties:
+                                            port:
+                                              description: Port number of the TCP
+                                                Route desired to be matched in the
+                                                given Istio VirtualService.
+                                              format: int64
+                                              type: integer
+                                          type: object
+                                        type: array
+                                      tlsRoutes:
+                                        description: A list of TLS/HTTPS routes within
+                                          VirtualService to edit. If omitted, VirtualService
+                                          must have a single route of this type.
+                                        items:
+                                          description: TLSRoute holds the information
+                                            on the virtual service's TLS/HTTPS routes
+                                            that are desired to be matched for changing
+                                            weights.
+                                          properties:
+                                            port:
+                                              description: Port number of the TLS
+                                                Route desired to be matched in the
+                                                given Istio VirtualService.
+                                              format: int64
+                                              type: integer
+                                            sniHosts:
+                                              description: A list of all the SNI Hosts
+                                                of the TLS Route desired to be matched
+                                                in the given Istio VirtualService.
+                                              items:
+                                                type: string
+                                              type: array
+                                          type: object
+                                        type: array
+                                    required:
+                                    - name
+                                    type: object
+                                  virtualServices:
+                                    description: VirtualServices references a list
+                                      of Istio VirtualService to modify to shape traffic
+                                    items:
+                                      description: IstioVirtualService holds information
+                                        on the virtual service the rollout needs to
+                                        modify
+                                      properties:
+                                        name:
+                                          description: Name holds the name of the
+                                            VirtualService
+                                          type: string
+                                        routes:
+                                          description: A list of HTTP routes within
+                                            VirtualService to edit. If omitted, VirtualService
+                                            must have a single route of this type.
+                                          items:
+                                            type: string
+                                          type: array
+                                        tcpRoutes:
+                                          description: A list of TCP routes within
+                                            VirtualService to edit. If omitted, VirtualService
+                                            must have a single route of this type.
+                                          items:
+                                            description: TCPRoute holds the information
+                                              on the virtual service's TCP routes
+                                              that are desired to be matched for changing
+                                              weights.
+                                            properties:
+                                              port:
+                                                description: Port number of the TCP
+                                                  Route desired to be matched in the
+                                                  given Istio VirtualService.
+                                                format: int64
+                                                type: integer
+                                            type: object
+                                          type: array
+                                        tlsRoutes:
+                                          description: A list of TLS/HTTPS routes
+                                            within VirtualService to edit. If omitted,
+                                            VirtualService must have a single route
+                                            of this type.
+                                          items:
+                                            description: TLSRoute holds the information
+                                              on the virtual service's TLS/HTTPS routes
+                                              that are desired to be matched for changing
+                                              weights.
+                                            properties:
+                                              port:
+                                                description: Port number of the TLS
+                                                  Route desired to be matched in the
+                                                  given Istio VirtualService.
+                                                format: int64
+                                                type: integer
+                                              sniHosts:
+                                                description: A list of all the SNI
+                                                  Hosts of the TLS Route desired to
+                                                  be matched in the given Istio VirtualService.
+                                                items:
+                                                  type: string
+                                                type: array
+                                            type: object
+                                          type: array
+                                      required:
+                                      - name
+                                      type: object
+                                    type: array
+                                type: object
+                              plugins:
+                                description: Plugins holds specific configuration
+                                  that traffic router plugins can use for routing
+                                  traffic
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                            type: object
+                        type: object
+                    type: object
+                  template:
+                    description: Template describes the pods that will be created.
+                    properties:
+                      metadata:
+                        description: |-
+                          Standard object's metadata.
+                          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Annotations is an unstructured key value map stored with a resource that may be
+                              set by external tools to store and retrieve arbitrary metadata. They are not
+                              queryable and should be preserved when modifying objects.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                            type: object
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Map of string keys and values that can be used to organize and categorize
+                              (scope and select) objects. May match selectors of replication controllers
+                              and services.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                            type: object
+                          name:
+                            description: |-
+                              Name must be unique within a namespace. Is required when creating resources, although
+                              some resources may allow a client to request the generation of an appropriate name
+                              automatically. Name is primarily intended for creation idempotence and configuration
+                              definition.
+                              Cannot be updated.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+                            type: string
+                          namespace:
+                            description: |-
+                              Namespace defines the space within which each name must be unique. An empty namespace is
+                              equivalent to the "default" namespace, but "default" is the canonical representation.
+                              Not all objects are required to be scoped to a namespace - the value of this field for
+                              those objects will be empty.
+
+
+                              Must be a DNS_LABEL.
+                              Cannot be updated.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
+                            type: string
+                        type: object
+                      spec:
+                        description: |-
+                          Specification of the desired behavior of the pod.
+                          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+                        properties:
+                          containers:
+                            description: |-
+                              List of containers belonging to the pod.
+                              Containers cannot currently be added or removed.
+                              There must be at least one container in a Pod.
+                              Cannot be updated.
+                            items:
+                              properties:
+                                image:
+                                  type: string
+                                name:
+                                  type: string
+                              required:
+                              - image
+                              - name
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
+                        required:
+                        - containers
+                        type: object
+                    type: object
+                required:
+                - strategy
+                type: object
+            required:
+            - istio
+            - rollout
+            type: object
+          status:
+            description: AristiStatus defines the observed state of Aristi
+            properties:
+              conditions:
+                description: |-
+                  INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource.\n---\nThis struct is intended for
+                    direct use as an array at the field path .status.conditions.  For
+                    example,\n\n\n\ttype FooStatus struct{\n\t    // Represents the
+                    observations of a foo's current state.\n\t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\"\n\t    //
+                    +patchMergeKey=type\n\t    // +patchStrategy=merge\n\t    // +listType=map\n\t
+                    \   // +listMapKey=type\n\t    Conditions []metav1.Condition `json:\"conditions,omitempty\"
+                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`\n\n\n\t
+                    \   // other fields\n\t}"
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        ---
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
+                        useful (see .node.status.conditions), the ability to deconflict is important.
+                        The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

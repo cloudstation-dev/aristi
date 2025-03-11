@@ -1,0 +1,41 @@
+apiVersion: aristi.cloudstation/v1alpha1
+kind: Aristi
+metadata:
+  labels:
+    app.kubernetes.io/name: aristi
+    app.kubernetes.io/managed-by: kustomize
+  name: aristi-sample
+spec:
+  istio:
+    gateways:
+      - name: ingressgateway
+    virtualService:
+      name: rollout-vsvc
+      routes:
+        - destination:
+            host: weather-test-app-hyd
+          weight: 10
+        - destination:
+            host: weather-test-app-ny
+          weight: 90
+  rollout:
+    selector:
+      matchLabels:
+        app: rollout-istio
+    replicas: 2
+    template:
+      metadata:
+        labels:
+          app: rollout-istio
+      spec:
+        containers:
+          - name: weather-app-falcon
+            image: docker.io/atulinfracloud/weathersample:v1
+    strategy:
+      canary:
+        canaryService: weather-test-app-ny
+        stableService: weather-test-app-hyd
+        steps:
+          - setWeight: 50
+          - pause:
+              duration: "10m"
