@@ -61,11 +61,10 @@ type AristiReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("aristi", req.NamespacedName)
-	// Obtener el CR Aristi
 
 	var aristi aristiv1alpha1.Aristi
 	if err := r.Get(ctx, req.NamespacedName, &aristi); err != nil {
-		log.Error(err, "No se pudo obtener el recurso Aristi")
+		log.Error(err, "It can't get the Aristi resource")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -75,16 +74,25 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return result, err2
 	}
 
+	c, err3 := r.createRollout(ctx, req, aristi, err, found, log)
+	if err3 != nil {
+		return c, err3
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *AristiReconciler) createRollout(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.Aristi, err error, found *istioclient.VirtualService, log logr.Logger) (ctrl.Result, error) {
 	var canarySteps []argov1alpha1.CanaryStep
 
 	for _, step := range aristi.Spec.Rollout.Strategy.Canary.Steps {
-		if step.SetWeight != nil { // Solo agregar si tiene peso
+		if step.SetWeight != nil {
 			canarySteps = append(canarySteps, argov1alpha1.CanaryStep{
 				SetWeight: step.SetWeight,
 			})
 		}
 
-		if step.Pause != nil { // Solo agregar si tiene pausa
+		if step.Pause != nil {
 			canarySteps = append(canarySteps, argov1alpha1.CanaryStep{
 				Pause: &argov1alpha1.RolloutPause{
 					Duration: &intstr.IntOrString{
@@ -105,7 +113,7 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		})
 	}
 
-	falcone := argov1alpha1.RolloutSpec{
+	rolloutSpec := argov1alpha1.RolloutSpec{
 		Replicas: aristi.Spec.Rollout.Replicas,
 		Strategy: argov1alpha1.RolloutStrategy{
 			Canary: &argov1alpha1.CanaryStrategy{
@@ -140,7 +148,7 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			Name:      aristi.Name + "-rollout",
 			Namespace: req.Namespace,
 		},
-		Spec: falcone,
+		Spec: rolloutSpec,
 	}
 
 	// Aplicar Rollout en Kubernetes
@@ -148,21 +156,20 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	err = r.Get(ctx, client.ObjectKey{Name: rollout.Name, Namespace: rollout.Namespace}, found)
 	if err != nil {
-		log.Info("Creando Rollout", "name", rollout.Name)
+		log.Info("Creating Rollout", "name", rollout.Name)
 		if err := r.Create(ctx, rollout); err != nil {
-			log.Error(err, "No se pudo crear el Rollout")
+			log.Error(err, "Can't create the Rollout")
 			return ctrl.Result{}, err
 		}
 	} else {
-		log.Info("Actualizando Rollout existente", "name", rollout.Name)
+		log.Info("Updating Rollout", "name", rollout.Name)
 		rolloutFound.Spec = rollout.Spec
 
 		if err := r.Update(ctx, found); err != nil {
-			log.Error(err, "No se pudo actualizar el Rollout")
+			log.Error(err, "Can't update the current Rollout", "name", rollout.Name)
 			return ctrl.Result{}, err
 		}
 	}
-
 	return ctrl.Result{}, nil
 }
 
