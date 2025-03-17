@@ -27,7 +27,35 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type Gateway struct {
-	Name string `json:"name"`
+	Name string      `json:"name"`
+	Spec GatewaySpec `json:"spec"`
+}
+
+type GatewaySpec struct {
+	Servers  []*Server         `protobuf:"bytes,1,rep,name=servers,proto3" json:"servers,omitempty"`
+	Selector map[string]string `protobuf:"bytes,2,rep,name=selector,proto3" json:"selector,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+type Server struct {
+	Hosts []string `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	Port  *Port    `protobuf:"bytes,1,opt,name=port,proto3" json:"port,omitempty"`
+}
+
+type Port struct {
+	// A valid non-negative integer port number.
+	Number uint32 `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
+	// The protocol exposed on the port.
+	// MUST be one of HTTP|HTTPS|GRPC|GRPC-WEB|HTTP2|MONGO|TCP|TLS.
+	// TLS can be either used to terminate non-HTTP based connections on a specific port
+	// or to route traffic based on SNI header to the destination without terminating the TLS connection.
+	Protocol string `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	// Label assigned to the port.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The port number on the endpoint where the traffic will be
+	// received. Applicable only when used with ServiceEntries.
+	// $hide_from_docs
+	//
+	// Deprecated: Marked as deprecated in networking/v1alpha3/gateway.proto.
+	TargetPort uint32 `protobuf:"varint,4,opt,name=target_port,json=targetPort,proto3" json:"target_port,omitempty"`
 }
 
 type Destination struct {
@@ -63,7 +91,7 @@ type Strategy struct {
 }
 
 type Istio struct {
-	Gateways       []Gateway      `json:"gateways"`
+	Gateways       []string       `json:"gateways"`
 	VirtualService VirtualService `json:"virtualService"`
 }
 
@@ -71,8 +99,7 @@ type Istio struct {
 type AristiSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Aristi. Edit aristi_types.go to remove/update
+	Gateway Gateway     `json:"gateway"`
 	Istio   Istio       `json:"istio"`
 	Rollout RolloutSpec `json:"rollout"`
 }

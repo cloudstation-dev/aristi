@@ -39,18 +39,65 @@ spec:
           spec:
             description: AristiSpec defines the desired state of Aristi
             properties:
+              gateway:
+                description: |-
+                  INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                properties:
+                  name:
+                    type: string
+                  spec:
+                    properties:
+                      selector:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      servers:
+                        items:
+                          properties:
+                            hosts:
+                              items:
+                                type: string
+                              type: array
+                            port:
+                              properties:
+                                name:
+                                  description: Label assigned to the port.
+                                  type: string
+                                number:
+                                  description: A valid non-negative integer port number.
+                                  format: int32
+                                  type: integer
+                                protocol:
+                                  description: |-
+                                    The protocol exposed on the port.
+                                    MUST be one of HTTP|HTTPS|GRPC|GRPC-WEB|HTTP2|MONGO|TCP|TLS.
+                                    TLS can be either used to terminate non-HTTP based connections on a specific port
+                                    or to route traffic based on SNI header to the destination without terminating the TLS connection.
+                                  type: string
+                                target_port:
+                                  description: |-
+                                    The port number on the endpoint where the traffic will be
+                                    received. Applicable only when used with ServiceEntries.
+                                    $hide_from_docs
+
+
+                                    Deprecated: Marked as deprecated in networking/v1alpha3/gateway.proto.
+                                  format: int32
+                                  type: integer
+                              type: object
+                          type: object
+                        type: array
+                    type: object
+                required:
+                - name
+                - spec
+                type: object
               istio:
-                description: Foo is an example field of Aristi. Edit aristi_types.go
-                  to remove/update
                 properties:
                   gateways:
                     items:
-                      properties:
-                        name:
-                          type: string
-                      required:
-                      - name
-                      type: object
+                      type: string
                     type: array
                   virtualService:
                     properties:
@@ -427,6 +474,7 @@ spec:
                 - strategy
                 type: object
             required:
+            - gateway
             - istio
             - rollout
             type: object

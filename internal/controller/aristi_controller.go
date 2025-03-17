@@ -63,18 +63,23 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := r.Log.WithValues("aristi", req.NamespacedName)
 
 	var aristi aristiv1alpha1.Aristi
-	if err := r.Get(ctx, req.NamespacedName, &aristi); err != nil {
+	err := r.Get(ctx, req.NamespacedName, &aristi)
+	if err != nil {
 		log.Error(err, "It can't get the Aristi resource")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Construir VirtualService basado en el CRD
-	found, err, result, err2 := createVirtualService(ctx, req, aristi, r, log)
+	gateway, err19 := createGateway(ctx, err, aristi, r, log)
+	if err19 != nil {
+		return gateway, err19
+	}
+
+	virtualService, err, result, err2 := createVirtualService(ctx, req, aristi, r, log)
 	if err2 != nil {
 		return result, err2
 	}
 
-	c, err3 := r.createRollout(ctx, req, aristi, err, found, log)
+	c, err3 := createRollout(ctx, req, aristi, err, virtualService, log, r)
 	if err3 != nil {
 		return c, err3
 	}
@@ -82,7 +87,49 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 
-func (r *AristiReconciler) createRollout(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.Aristi, err error, found *istioclient.VirtualService, log logr.Logger) (ctrl.Result, error) {
+func createGateway(ctx context.Context, err error, aristi aristiv1alpha1.Aristi, r *AristiReconciler, log logr.Logger) (ctrl.Result, error) {
+	var newServers []*networkingv1alpha3.Server
+	for _, server := range aristi.Spec.Gateway.Spec.Servers {
+		newServer := &networkingv1alpha3.Server{
+			Port: &networkingv1alpha3.Port{
+				Number:   server.Port.Number,   // Sobreescribimos con 80
+				Name:     server.Port.Name,     // Nombre fijo
+				Protocol: server.Port.Protocol, // Protocolo fijo
+			},
+			Hosts: []string{"*"},
+		}
+		newServers = append(newServers, newServer)
+	}
+
+	gateway := &istiov1alpha3.Gateway{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Gateway",
+			APIVersion: "networking.istio.io/v1alpha3",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      aristi.Spec.Gateway.Name,
+			Namespace: aristi.Namespace,
+		},
+		Spec: networkingv1alpha3.Gateway{
+			Servers:  newServers,
+			Selector: aristi.Spec.Gateway.Spec.Selector,
+		},
+	}
+
+	gatewayFound := &istiov1alpha3.Gateway{}
+
+	err = r.Get(ctx, client.ObjectKey{Name: gatewayFound.Name, Namespace: gatewayFound.Namespace}, gatewayFound)
+	if err != nil {
+		log.Info("Creating Gateway", "name", gateway.Name)
+		if err := r.Create(ctx, gateway); err != nil {
+			log.Error(err, "Can't create the Gateway")
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
+func createRollout(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.Aristi, err error, found *istioclient.VirtualService, log logr.Logger, r *AristiReconciler) (ctrl.Result, error) {
 	var canarySteps []argov1alpha1.CanaryStep
 
 	for _, step := range aristi.Spec.Rollout.Strategy.Canary.Steps {
@@ -151,7 +198,7 @@ func (r *AristiReconciler) createRollout(ctx context.Context, req ctrl.Request, 
 		Spec: rolloutSpec,
 	}
 
-	// Aplicar Rollout en Kubernetes
+	// Apply rollout in k8s
 	rolloutFound := &argov1alpha1.Rollout{}
 
 	err = r.Get(ctx, client.ObjectKey{Name: rollout.Name, Namespace: rollout.Namespace}, found)
@@ -205,8 +252,8 @@ func createVirtualService(ctx context.Context, req ctrl.Request, aristi aristiv1
 	}
 
 	// Apply VirtualService in Kubernetes
-	virtualServicefound := &istiov1alpha3.VirtualService{}
-	err := r.Get(ctx, client.ObjectKey{Name: virtualService.Name, Namespace: virtualService.Namespace}, virtualServicefound)
+	virtualServiceFound := &istiov1alpha3.VirtualService{}
+	err := r.Get(ctx, client.ObjectKey{Name: virtualService.Name, Namespace: virtualService.Namespace}, virtualServiceFound)
 	if err != nil {
 		log.Info("Creating VirtualService", "name", virtualService.Name)
 		if err := r.Create(ctx, virtualService); err != nil {
@@ -216,7 +263,7 @@ func createVirtualService(ctx context.Context, req ctrl.Request, aristi aristiv1
 	}
 
 	log.Info("VirtualService created/updated correctly")
-	return virtualServicefound, err, ctrl.Result{}, nil
+	return virtualServiceFound, err, ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -5,10 +5,23 @@ metadata:
     app.kubernetes.io/name: aristi
     app.kubernetes.io/managed-by: kustomize
   name: aristi-sample
+  namespace: default
 spec:
+  gateway:
+    name: argo-gateway
+    spec:
+      selector:
+        istio: ingressgateway # use the default IngressGateway
+      servers:
+        - port:
+            number: 80
+            name: http
+            protocol: HTTP
+          hosts:
+            - "*"
   istio:
     gateways:
-      - name: ingressgateway
+      - argo-gateway
     virtualService:
       name: rollout-vsvc
       routes:
