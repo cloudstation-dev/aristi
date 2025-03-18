@@ -1,8 +1,11 @@
-# aristi
-// TODO(user): Add simple overview of use/purpose
+# Aristi – Stupidly Easy Progressive Delivery for Kubernetes 🚀🎯
+Progressive delivery shouldn’t be complicated. That’s why we built Aristi, a Kubernetes operator designed to make progressive deployments effortless and insanely fast.
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+In its first version, Aristi simplifies canary deployments, enabling smooth, controlled rollouts in under a minute with just one manifest. But we’re not stopping there—Aristi is evolving to support Blue-Green deployments, A/B testing, and more, giving teams the flexibility to choose the best strategy for their needs.
+
+Currently, Aristi integrates with ArgoCD and Istio, leveraging their power for seamless automation. Whether you're a startup or an enterprise, Aristi helps you deploy smarter, faster, and with zero hassle.
+
+✨ *Progressive delivery should be simple. Aristi makes it happen.*
 
 ## Getting Started
 
@@ -90,7 +93,14 @@ kubectl apply -f https://raw.githubusercontent.com/<org>/aristi/<tag or branch>/
 ```
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+Ever wanted to leave your mark on the cloud-native world? Well, now’s your chance! Aristi is on a mission to make Progressive Delivery for Kubernetes ridiculously fast, and we need your brilliance, your PRs, and maybe even your memes.
+
+- 👨‍💻 Write code – because YAML doesn’t write itself (yet).
+- 🔍 Report bugs – we promise not to blame you for finding them.
+- 📖 Improve docs – help us make them clearer than your boss’s requirements.
+- 🌍 Spread the word – because Aristi deserves more fame than a cat video.
+
+Join us, contribute, and become a legend in the progressive deployment world! 🚀🐦
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
 
