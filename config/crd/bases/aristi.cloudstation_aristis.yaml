@@ -99,6 +99,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  hosts:
+                    items:
+                      type: string
+                    type: array
                   virtualService:
                     properties:
                       name:
@@ -182,6 +186,120 @@ spec:
                         type: object
                     type: object
                     x-kubernetes-map-type: atomic
+                  services:
+                    properties:
+                      canary:
+                        properties:
+                          name:
+                            description: Name of service
+                            type: string
+                          ports:
+                            description: |-
+                              The rollout needs to use a stable and canary service. This field is the list of ports for the services.
+                              More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+                            items:
+                              description: The rollout needs a stable and canary service
+                              properties:
+                                port:
+                                  description: The port that will be exposed by this
+                                    service.
+                                  format: int32
+                                  type: integer
+                                protocol:
+                                  default: TCP
+                                  description: |-
+                                    The IP protocol for this port. Supports "TCP", "UDP", and "SCTP".
+                                    Default is TCP.
+                                  enum:
+                                  - TCP
+                                  - UDP
+                                  - SCTP
+                                  type: string
+                                targetPort:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  description: |-
+                                    Number or name of the port to access on the pods targeted by the service.
+                                    Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
+                                    If this is a string, it will be looked up as a named port in the
+                                    target Pod's container ports. If this is not specified, the value
+                                    of the 'port' field is used (an identity map).
+                                    This field is ignored for services with clusterIP=None, and should be
+                                    omitted or set equal to the 'port' field.
+                                    More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
+                                  x-kubernetes-int-or-string: true
+                              required:
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - port
+                            - protocol
+                            x-kubernetes-list-type: map
+                          type:
+                            description: Service Type string describes ingress methods
+                              for a service
+                            type: string
+                        type: object
+                      stable:
+                        properties:
+                          name:
+                            description: Name of service
+                            type: string
+                          ports:
+                            description: |-
+                              The rollout needs to use a stable and canary service. This field is the list of ports for the services.
+                              More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+                            items:
+                              description: The rollout needs a stable and canary service
+                              properties:
+                                port:
+                                  description: The port that will be exposed by this
+                                    service.
+                                  format: int32
+                                  type: integer
+                                protocol:
+                                  default: TCP
+                                  description: |-
+                                    The IP protocol for this port. Supports "TCP", "UDP", and "SCTP".
+                                    Default is TCP.
+                                  enum:
+                                  - TCP
+                                  - UDP
+                                  - SCTP
+                                  type: string
+                                targetPort:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  description: |-
+                                    Number or name of the port to access on the pods targeted by the service.
+                                    Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
+                                    If this is a string, it will be looked up as a named port in the
+                                    target Pod's container ports. If this is not specified, the value
+                                    of the 'port' field is used (an identity map).
+                                    This field is ignored for services with clusterIP=None, and should be
+                                    omitted or set equal to the 'port' field.
+                                    More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
+                                  x-kubernetes-int-or-string: true
+                              required:
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - port
+                            - protocol
+                            x-kubernetes-list-type: map
+                          type:
+                            description: Service Type string describes ingress methods
+                              for a service
+                            type: string
+                        type: object
+                    required:
+                    - canary
+                    - stable
+                    type: object
                   strategy:
                     description: RolloutStrategy defines strategy to apply during
                       next rollout

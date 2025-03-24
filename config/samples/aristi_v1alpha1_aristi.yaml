@@ -20,6 +20,8 @@ spec:
           hosts:
             - "*"
   istio:
+    hosts:
+      - "*"
     gateways:
       - argo-gateway
     virtualService:
@@ -32,6 +34,21 @@ spec:
             host: weather-test-app-ny
           weight: 90
   rollout:
+    services:
+      stable:
+        name: weather-test-app-hyd
+        ports:
+          - protocol: "TCP"
+            port: 80
+            targetPort: 5000
+        type: ClusterIP
+      canary:
+        name:  weather-test-app-ny
+        ports:
+          - protocol: "TCP"
+            port: 80
+            targetPort: 5000
+        type: ClusterIP
     selector:
       matchLabels:
         app: rollout-istio
