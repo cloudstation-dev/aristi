@@ -15,7 +15,8 @@ Currently, Aristi integrates with ArgoCD and Istio, leveraging their power for s
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
 
-### To Deploy on the cluster
+### Build and push your image
+
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
@@ -26,13 +27,26 @@ make docker-build docker-push IMG=<some-registry>/aristi:tag
 And it is required to have access to pull the image from the working environment.
 Make sure you have the proper permission to the registry if the above commands donâ€™t work.
 
-**Install the CRDs into the cluster:**
+### To Deploy on the cluster
+
+**Install the Custom Resource Definitions (CRDs) into the cluster:**
 
 ```sh
 make install
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+**2. Option 1: Run the operator application locally**
+
+If you'd like to test and debug the operator in your local environment, you can use the make run command. This compiles and runs the operator directly in your development environment, without the need to deploy it to the Kubernetes cluster.
+
+``` sh
+make run
+```
+
+**OR**
+**Option 2: Deploy the operator to the cluster using the built image**
+
+If you prefer to deploy the operator to the cluster, you can use the make deploy command. This will deploy the operator using the image specified by the IMG environment variable. Replace <some-registry>/aristi:tag with your image registry and tag.
 
 ```sh
 make deploy IMG=<some-registry>/aristi:tag
@@ -42,10 +56,11 @@ make deploy IMG=<some-registry>/aristi:tag
 privileges or be logged in as admin.
 
 **Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+
+Once the operator is deployed, you can create instances of your custom resources by applying the sample YAML files provided in the config/samples directory.
 
 ```sh
-kubectl apply -k config/samples/
+kubectl apply -f ./config/samples/aristi_v1alpha1_aristi.yaml
 ```
 
 >**NOTE**: Ensure that the samples has default values to test it out.
@@ -105,18 +120,6 @@ Join us, contribute, and become a legend in the progressive deployment world! ðŸ
 **NOTE:** Run `make help` for more information on all potential `make` targets
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
-## License
-
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
