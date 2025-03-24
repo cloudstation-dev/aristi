@@ -69,19 +69,22 @@ func (r *AristiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	gateway, err19 := createGateway(ctx, err, aristi, r, log)
-	if err19 != nil {
-		return gateway, err19
+	gateway, gatewayError := createGateway(ctx, err, aristi, r, log)
+	if gatewayError != nil {
+		log.Error(err, "Can't create the Gateway", "name", aristi.Spec.Gateway.Name)
+		return gateway, gatewayError
 	}
 
-	virtualService, err, result, err2 := createVirtualService(ctx, req, aristi, r, log)
-	if err2 != nil {
-		return result, err2
+	virtualService, err, result, virtualServiceError := createVirtualService(ctx, req, aristi, r, log)
+	if virtualServiceError != nil {
+		log.Error(err, "Can't create the Virtual Service", "name", aristi.Spec.Istio.VirtualService.Name)
+		return result, virtualServiceError
 	}
 
-	c, err3 := createRollout(ctx, req, aristi, err, virtualService, log, r)
-	if err3 != nil {
-		return c, err3
+	rolloutResult, rolloutError := createRollout(ctx, req, aristi, err, virtualService, log, r)
+	if rolloutError != nil {
+		log.Error(err, "Can't create the Rollout", "name", aristi.Spec.Rollout.Template.Name)
+		return rolloutResult, rolloutError
 	}
 
 	return ctrl.Result{}, nil
@@ -92,11 +95,11 @@ func createGateway(ctx context.Context, err error, aristi aristiv1alpha1.Aristi,
 	for _, server := range aristi.Spec.Gateway.Spec.Servers {
 		newServer := &networkingv1alpha3.Server{
 			Port: &networkingv1alpha3.Port{
-				Number:   server.Port.Number,   // Sobreescribimos con 80
-				Name:     server.Port.Name,     // Nombre fijo
-				Protocol: server.Port.Protocol, // Protocolo fijo
+				Number:   server.Port.Number,
+				Name:     server.Port.Name,
+				Protocol: server.Port.Protocol,
 			},
-			Hosts: []string{"*"},
+			Hosts: server.Hosts,
 		}
 		newServers = append(newServers, newServer)
 	}
@@ -122,7 +125,7 @@ func createGateway(ctx context.Context, err error, aristi aristiv1alpha1.Aristi,
 	if err != nil {
 		log.Info("Creating Gateway", "name", gateway.Name)
 		if err := r.Create(ctx, gateway); err != nil {
-			log.Error(err, "Can't create the Gateway")
+			log.Error(err, "Can't create the Gateway", gateway.Name)
 			return ctrl.Result{}, err
 		}
 	}
@@ -158,6 +161,12 @@ func createRollout(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.
 			Name:  c.Name,
 			Image: c.Image,
 		})
+	}
+
+	rolloutServicesResult, rolloutServicesError := createRolloutServices(ctx, req, aristi, r, log)
+	if rolloutServicesError != nil {
+		log.Error(err, "Can't create the Rollout because the kubernetes services were not created")
+		return rolloutServicesResult, rolloutServicesError
 	}
 
 	rolloutSpec := argov1alpha1.RolloutSpec{
@@ -220,6 +229,55 @@ func createRollout(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.
 	return ctrl.Result{}, nil
 }
 
+func createRolloutServices(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.Aristi, r *AristiReconciler, log logr.Logger) (ctrl.Result, error) {
+
+	_, result, canaryServiceErr := createService(ctx, req, aristi.Spec.Rollout.Template.Labels, aristi.Spec.Rollout.Services.Canary, r, log)
+	if canaryServiceErr != nil {
+		log.Error(canaryServiceErr, "Can't create the canary service", "name", aristi.Spec.Rollout.Services.Canary.Name)
+		return result, canaryServiceErr
+	}
+
+	_, result, stableServiceErr := createService(ctx, req, aristi.Spec.Rollout.Template.Labels, aristi.Spec.Rollout.Services.Stable, r, log)
+	if stableServiceErr != nil {
+		log.Error(canaryServiceErr, "Can't create the stable service", "name", aristi.Spec.Rollout.Services.Stable.Name)
+		return result, canaryServiceErr
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func createService(ctx context.Context, req ctrl.Request, labels map[string]string, service aristiv1alpha1.Service, r *AristiReconciler, log logr.Logger) (*corev1.Service, ctrl.Result, error) {
+	var servicePorts []corev1.ServicePort
+
+	for _, port := range service.Ports {
+		servicePort := corev1.ServicePort{
+			Protocol:   corev1.Protocol(port.Protocol),
+			Port:       port.Port,
+			TargetPort: port.TargetPort,
+		}
+
+		servicePorts = append(servicePorts, servicePort)
+	}
+
+	serviceCreate := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      service.Name,
+			Namespace: req.Namespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: labels,
+			Ports:    servicePorts,
+			Type:     corev1.ServiceType(service.Type),
+		},
+	}
+	// Create or update the Services
+	if err := r.Client.Create(ctx, serviceCreate); err != nil {
+		log.Error(err, "Can't create the service", "name", serviceCreate.Name)
+		return nil, ctrl.Result{}, err
+	}
+	return serviceCreate, ctrl.Result{}, nil
+}
+
 func createVirtualService(ctx context.Context, req ctrl.Request, aristi aristiv1alpha1.Aristi, r *AristiReconciler, log logr.Logger) (*istioclient.VirtualService, error, ctrl.Result, error) {
 	var httpRoutes []*networkingv1alpha3.HTTPRoute
 
@@ -245,8 +303,8 @@ func createVirtualService(ctx context.Context, req ctrl.Request, aristi aristiv1
 			Namespace: req.Namespace,
 		},
 		Spec: networkingv1alpha3.VirtualService{
-			Hosts:    []string{"*"},
-			Gateways: []string{"argo-gateway"},
+			Hosts:    aristi.Spec.Istio.Hosts,
+			Gateways: aristi.Spec.Istio.Gateways,
 			Http:     httpRoutes,
 		},
 	}

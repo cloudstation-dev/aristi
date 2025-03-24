@@ -92,7 +92,43 @@ type Strategy struct {
 
 type Istio struct {
 	Gateways       []string       `json:"gateways"`
+	Hosts          []string       `protobuf:"bytes,1,rep,name=hosts,proto3" json:"hosts,omitempty"`
 	VirtualService VirtualService `json:"virtualService"`
+}
+
+// Protocol defines network protocols supported for things like container ports.
+// +enum
+type Protocol string
+
+const (
+	// ProtocolTCP is the TCP protocol.
+	ProtocolTCP Protocol = "TCP"
+	// ProtocolUDP is the UDP protocol.
+	ProtocolUDP Protocol = "UDP"
+	// ProtocolSCTP is the SCTP protocol.
+	ProtocolSCTP Protocol = "SCTP"
+)
+
+// The rollout needs a stable and canary service
+type ServicePort struct {
+	// The IP protocol for this port. Supports "TCP", "UDP", and "SCTP".
+	// Default is TCP.
+	// +kubebuilder:validation:Enum=TCP;UDP;SCTP
+	// +kubebuilder:default="TCP"
+	Protocol Protocol `json:"protocol,omitempty" protobuf:"bytes,2,opt,name=protocol,casttype=Protocol"`
+	// The port that will be exposed by this service.
+	Port int32 `json:"port" protobuf:"varint,3,opt,name=port"`
+
+	// Number or name of the port to access on the pods targeted by the service.
+	// Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
+	// If this is a string, it will be looked up as a named port in the
+	// target Pod's container ports. If this is not specified, the value
+	// of the 'port' field is used (an identity map).
+	// This field is ignored for services with clusterIP=None, and should be
+	// omitted or set equal to the 'port' field.
+	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
+	// +optional
+	TargetPort intstr.IntOrString `json:"targetPort,omitempty" protobuf:"bytes,4,opt,name=targetPort"`
 }
 
 // AristiSpec defines the desired state of Aristi
@@ -115,7 +151,51 @@ type RolloutSpec struct {
 	// +optional
 	Selector *metav1.LabelSelector `json:"selector" protobuf:"bytes,2,opt,name=selector"`
 	Strategy RolloutStrategy       `json:"strategy" protobuf:"bytes,5,opt,name=strategy"`
+	Services RolloutServices       `json:"services,omitempty" protobuf:"bytes,6,rep,name=services"`
 }
+
+type RolloutServices struct {
+	Stable Service `json:"stable" protobuf:"bytes,1,opt,name=stable"`
+	Canary Service `json:"canary" protobuf:"bytes,2,opt,name=canary"`
+}
+
+type Service struct {
+	// Name of service
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=canaryService"`
+	// The rollout needs to use a stable and canary service. This field is the list of ports for the services.
+	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+	// +patchMergeKey=port
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=port
+	// +listMapKey=protocol
+	Ports []ServicePort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"port" protobuf:"bytes,1,rep,name=ports"`
+	Type  ServiceType   `json:"type,omitempty" protobuf:"bytes,4,opt,name=type,casttype=ServiceType"`
+}
+
+// Service Type string describes ingress methods for a service
+// +enum
+type ServiceType string
+
+const (
+	// ServiceTypeClusterIP means a service will only be accessible inside the
+	// cluster, via the cluster IP.
+	ServiceTypeClusterIP ServiceType = "ClusterIP"
+
+	// ServiceTypeNodePort means a service will be exposed on one port of
+	// every node, in addition to 'ClusterIP' type.
+	ServiceTypeNodePort ServiceType = "NodePort"
+
+	// ServiceTypeLoadBalancer means a service will be exposed via an
+	// external load balancer (if the cloud provider supports it), in addition
+	// to 'NodePort' type.
+	ServiceTypeLoadBalancer ServiceType = "LoadBalancer"
+
+	// ServiceTypeExternalName means a service consists of only a reference to
+	// an external name that kubedns or equivalent will return as a CNAME
+	// record, with no exposing or proxying of any pods involved.
+	ServiceTypeExternalName ServiceType = "ExternalName"
+)
 
 // RolloutStrategy defines strategy to apply during next rollout
 type RolloutStrategy struct {
