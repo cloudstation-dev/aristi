@@ -18,8 +18,8 @@ package v1alpha1
 
 import (
 	"encoding/json"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	_ "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 

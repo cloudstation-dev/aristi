@@ -2,12 +2,21 @@
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.29.0
+GOLANGCI_VERSION ?= v1.63.4
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
+endif
+
+ifndef NO_COLOR
+YELLOW=\033[0;33m
+CYAN=\033[1;36m
+RED=\033[31m
+# no color
+NC=\033[0m
 endif
 
 # CONTAINER_TOOL defines the container tool to be used for building images.
@@ -68,9 +77,12 @@ test: manifests generate fmt vet envtest ## Run tests.
 test-e2e:
 	go test ./test/e2e/ -v -ginkgo.v
 
+# runs golangci-lint aggregated linter; see .golangci.yaml for linter list
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint linter & yamllint
-	$(GOLANGCI_LINT) run
+lint:
+	@echo -e "\n$(YELLOW)Running the linters$(NC)"
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_VERSION)
+	$(GOBIN)/golangci-lint run
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
